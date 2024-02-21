@@ -512,7 +512,7 @@ struct unsafe_bitcopy_t final {
 
 #ifndef CXXBRIDGE1_RUST_BITCOPY
 #define CXXBRIDGE1_RUST_BITCOPY
-constexpr unsafe_bitcopy_t unsafe_bitcopy{};
+inline constexpr unsafe_bitcopy_t unsafe_bitcopy{};
 #endif // CXXBRIDGE1_RUST_BITCOPY
 
 #ifndef CXXBRIDGE1_RUST_SLICE
