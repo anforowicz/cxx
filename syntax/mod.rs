@@ -25,6 +25,8 @@ pub(crate) mod report;
 pub(crate) mod resolve;
 pub(crate) mod set;
 pub(crate) mod symbol;
+#[cfg(test)]
+pub(crate) mod test_support;
 mod tokens;
 mod toposort;
 pub(crate) mod trivial;
