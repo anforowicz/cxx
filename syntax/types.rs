@@ -170,25 +170,6 @@ impl<'a> Types<'a> {
             }
         }
 
-        for ty in &all {
-            let Some(impl_key) = ty.impl_key() else {
-                continue;
-            };
-            let implicit_impl = match &impl_key {
-                ImplKey::RustBox(ident)
-                | ImplKey::RustVec(ident)
-                | ImplKey::UniquePtr(ident)
-                | ImplKey::SharedPtr(ident)
-                | ImplKey::WeakPtr(ident)
-                | ImplKey::CxxVector(ident) => {
-                    Atom::from(ident.rust).is_none() && !aliases.contains_key(ident.rust)
-                }
-            };
-            if implicit_impl && !impls.contains_key(&impl_key) {
-                impls.insert(impl_key, None);
-            }
-        }
-
         // All these APIs may contain types passed by value. We need to ensure
         // we check that this is permissible. We do this _after_ scanning all
         // the APIs above, in case some function or struct references a type
@@ -212,6 +193,18 @@ impl<'a> Types<'a> {
         };
 
         types.toposorted_structs = toposort::sort(cx, apis, &types);
+
+        let implicit_impls = types
+            .all
+            .iter()
+            .filter_map(Type::impl_key)
+            .filter(|impl_key| impl_key.is_implicit_impl_ok(&types))
+            .collect::<Vec<_>>();
+        for impl_key in implicit_impls {
+            if !types.impls.contains_key(&impl_key) {
+                types.impls.insert(impl_key, None);
+            }
+        }
 
         let mut unresolved_structs = types.structs.keys();
         let mut new_information = true;
@@ -274,6 +267,11 @@ impl<'a> Types<'a> {
         self.structs.contains_key(ty)
             || self.enums.contains_key(ty)
             || self.aliases.contains_key(ty)
+    }
+
+    /// Returns `true` if `ident` is a defined or declared within the current `#[cxx::bridge]`.
+    pub(crate) fn is_local(&self, ident: &Ident) -> bool {
+        Atom::from(ident).is_none() && !self.aliases.contains_key(ident)
     }
 }
 
