@@ -58,7 +58,7 @@ pub(crate) fn get_impl_and_ty_generics<'a>(
 fn get_generic_lifetimes<'a>(ty: &'a Type) -> &'a Lifetimes {
     match ty {
         Type::Ident(named_type) => &named_type.generics,
-        Type::CxxVector(ty1) => get_generic_lifetimes(&ty1.inner),
+        Type::RustBox(ty1) | Type::CxxVector(ty1) => get_generic_lifetimes(&ty1.inner),
         _ => unreachable!("syntax/check.rs should reject other types"),
     }
 }
@@ -78,7 +78,7 @@ fn get_generic_lifetimes<'a>(ty: &'a Type) -> &'a Lifetimes {
 fn resolve_generic_lifetimes<'a>(ty: &'a Type, types: &'a Types) -> &'a Lifetimes {
     match ty {
         Type::Ident(named_type) => types.resolve(&named_type.rust).generics,
-        Type::CxxVector(ty1) => resolve_generic_lifetimes(&ty1.inner, types),
+        Type::RustBox(ty1) | Type::CxxVector(ty1) => resolve_generic_lifetimes(&ty1.inner, types),
         _ => unreachable!("syntax/check.rs should reject other types"),
     }
 }
