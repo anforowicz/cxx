@@ -1,11 +1,18 @@
 use crate::syntax::namespace::Namespace;
 use crate::syntax::{ForeignName, Pair};
 use proc_macro2::{Ident, TokenStream};
-use quote::ToTokens;
+use quote::{IdentFragment, ToTokens};
 use std::fmt::{self, Display, Write};
 
 // A mangled symbol consisting of segments separated by '$'.
-// For example: cxxbridge1$string$new
+//
+// Segments are expected to only contain characters that are valid inside
+// both C++ and Rust identifiers (
+// [XID_Start or XID_Continue](https://doc.rust-lang.org/reference/identifiers.html),
+// but not a `$` sign).
+//
+// Example: cxxbridge1$string$new
+#[derive(Eq, Hash, PartialEq)]
 pub(crate) struct Symbol(String);
 
 impl Display for Symbol {
@@ -20,6 +27,27 @@ impl ToTokens for Symbol {
     }
 }
 
+impl IdentFragment for Symbol {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // Need to escape non-identifier-characters
+        // (`$` is the only such character allowed in `Symbol`s).
+        //
+        // The escaping scheme needs to be
+        // [an injection](https://en.wikipedia.org/wiki/Injective_function).
+        for c in self.0.chars() {
+            match c {
+                '_' => f.write_str("__")?,
+                '$' => f.write_str("_d")?,
+                c => {
+                    // TODO: Assert that `c` is XID_Start or XID_Continue?
+                    f.write_fmt(format_args!("{}", c))?;
+                }
+            }
+        }
+        Ok(())
+    }
+}
+
 impl Symbol {
     fn push(&mut self, segment: &dyn Display) {
         let len_before = self.0.len();
@@ -30,6 +58,7 @@ impl Symbol {
         assert!(self.0.len() > len_before);
     }
 
+    #[allow(dead_code)] // only used by cxx-gen, not cxxbridge-macro
     pub(crate) fn from_idents<'a>(it: impl Iterator<Item = &'a dyn Segment>) -> Self {
         let mut symbol = Symbol(String::new());
         for segment in it {
