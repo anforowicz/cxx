@@ -521,7 +521,7 @@ fn r_return_rust_vec() -> Vec<u8> {
 }
 
 fn r_return_rust_vec_string() -> Vec<String> {
-    Vec::new()
+    vec!["foo".to_string()]
 }
 
 fn r_return_rust_vec_extern_struct() -> Vec<ffi::Job> {

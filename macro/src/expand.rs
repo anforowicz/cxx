@@ -565,10 +565,6 @@ fn expand_cxx_function_shim(efn: &ExternFn, types: &Types) -> TokenStream {
                     false => quote_spanned!(span=> ::cxx::private::RustString::from_ref(#var)),
                     true => quote_spanned!(span=> ::cxx::private::RustString::from_mut(#var)),
                 },
-                Type::RustVec(vec) if vec.inner == RustString => match ty.mutable {
-                    false => quote_spanned!(span=> ::cxx::private::RustVec::from_ref_vec_string(#var)),
-                    true => quote_spanned!(span=> ::cxx::private::RustVec::from_mut_vec_string(#var)),
-                },
                 Type::RustVec(_) => match ty.mutable {
                     false => quote_spanned!(span=> ::cxx::private::RustVec::from_ref(#var)),
                     true => quote_spanned!(span=> ::cxx::private::RustVec::from_mut(#var)),
@@ -669,12 +665,8 @@ fn expand_cxx_function_shim(efn: &ExternFn, types: &Types) -> TokenStream {
                     quote_spanned!(span=> ::cxx::alloc::boxed::Box::from_raw(#call))
                 }
             }
-            Type::RustVec(vec) => {
-                if vec.inner == RustString {
-                    quote_spanned!(span=> #call.into_vec_string())
-                } else {
-                    quote_spanned!(span=> #call.into_vec())
-                }
+            Type::RustVec(_) => {
+                quote_spanned!(span=> #call.into_vec())
             }
             Type::UniquePtr(ty) => {
                 if types.is_considered_improper_ctype(&ty.inner) {
@@ -687,10 +679,6 @@ fn expand_cxx_function_shim(efn: &ExternFn, types: &Types) -> TokenStream {
                 Type::Ident(ident) if ident.rust == RustString => match ty.mutable {
                     false => quote_spanned!(span=> #call.as_string()),
                     true => quote_spanned!(span=> #call.as_mut_string()),
-                },
-                Type::RustVec(vec) if vec.inner == RustString => match ty.mutable {
-                    false => quote_spanned!(span=> #call.as_vec_string()),
-                    true => quote_spanned!(span=> #call.as_mut_vec_string()),
                 },
                 Type::RustVec(_) => match ty.mutable {
                     false => quote_spanned!(span=> #call.as_vec()),
@@ -1029,13 +1017,9 @@ fn expand_rust_function_shim_impl(
                 requires_unsafe = true;
                 quote_spanned!(span=> ::cxx::alloc::boxed::Box::from_raw(#var))
             }
-            Type::RustVec(vec) => {
+            Type::RustVec(_) => {
                 requires_unsafe = true;
-                if vec.inner == RustString {
-                    quote_spanned!(span=> ::cxx::core::mem::take((*#var).as_mut_vec_string()))
-                } else {
-                    quote_spanned!(span=> ::cxx::core::mem::take((*#var).as_mut_vec()))
-                }
+                quote_spanned!(span=> ::cxx::core::mem::take((*#var).as_mut_vec()))
             }
             Type::UniquePtr(_) => {
                 requires_unsafe = true;
@@ -1045,10 +1029,6 @@ fn expand_rust_function_shim_impl(
                 Type::Ident(i) if i.rust == RustString => match ty.mutable {
                     false => quote_spanned!(span=> #var.as_string()),
                     true => quote_spanned!(span=> #var.as_mut_string()),
-                },
-                Type::RustVec(vec) if vec.inner == RustString => match ty.mutable {
-                    false => quote_spanned!(span=> #var.as_vec_string()),
-                    true => quote_spanned!(span=> #var.as_mut_vec_string()),
                 },
                 Type::RustVec(_) => match ty.mutable {
                     false => quote_spanned!(span=> #var.as_vec()),
@@ -1100,22 +1080,12 @@ fn expand_rust_function_shim_impl(
             Some(quote_spanned!(span=> ::cxx::private::RustString::from))
         }
         Type::RustBox(_) => Some(quote_spanned!(span=> ::cxx::alloc::boxed::Box::into_raw)),
-        Type::RustVec(vec) => {
-            if vec.inner == RustString {
-                Some(quote_spanned!(span=> ::cxx::private::RustVec::from_vec_string))
-            } else {
-                Some(quote_spanned!(span=> ::cxx::private::RustVec::from))
-            }
-        }
+        Type::RustVec(_) => Some(quote_spanned!(span=> ::cxx::private::RustVec::from)),
         Type::UniquePtr(_) => Some(quote_spanned!(span=> ::cxx::UniquePtr::into_raw)),
         Type::Ref(ty) => match &ty.inner {
             Type::Ident(ident) if ident.rust == RustString => match ty.mutable {
                 false => Some(quote_spanned!(span=> ::cxx::private::RustString::from_ref)),
                 true => Some(quote_spanned!(span=> ::cxx::private::RustString::from_mut)),
-            },
-            Type::RustVec(vec) if vec.inner == RustString => match ty.mutable {
-                false => Some(quote_spanned!(span=> ::cxx::private::RustVec::from_ref_vec_string)),
-                true => Some(quote_spanned!(span=> ::cxx::private::RustVec::from_mut_vec_string)),
             },
             Type::RustVec(_) => match ty.mutable {
                 false => Some(quote_spanned!(span=> ::cxx::private::RustVec::from_ref)),
@@ -1930,9 +1900,12 @@ fn expand_extern_type(ty: &Type, types: &Types, proper: bool) -> TokenStream {
             }
         }
         Type::RustVec(ty) => {
+            // Replace `Vec<Foo>` with `::cxx::private::RustVec<Foo>` because the latter
+            // (unlike the former) has a guaranteed, predictible ABI (both have the same memory
+            // layout).  Note that the ABI and memory layout does not depend on the `elem` type.
             let span = ty.name.span();
             let langle = ty.langle;
-            let elem = expand_extern_type(&ty.inner, types, proper);
+            let elem = &ty.inner;
             let rangle = ty.rangle;
             quote_spanned!(span=> ::cxx::private::RustVec #langle #elem #rangle)
         }
@@ -1948,7 +1921,7 @@ fn expand_extern_type(ty: &Type, types: &Types, proper: bool) -> TokenStream {
                 Type::RustVec(ty) => {
                     let span = ty.name.span();
                     let langle = ty.langle;
-                    let inner = expand_extern_type(&ty.inner, types, proper);
+                    let inner = &ty.inner;
                     let rangle = ty.rangle;
                     quote_spanned!(span=> #ampersand #lifetime #mutability ::cxx::private::RustVec #langle #inner #rangle)
                 }
@@ -2123,9 +2096,8 @@ mod test {
             }
         })
         .unwrap();
-        assert!(rs.contains("__return: *mut ::cxx::private::RustVec<::cxx::private::RustString>"));
+        assert!(rs.contains("__return: *mut ::cxx::private::RustVec<::cxx::alloc::string::String>"));
         assert!(rs.contains("fn __foo() -> ::cxx::alloc::vec::Vec<::cxx::alloc::string::String>"));
-        assert!(rs.contains("::cxx::private::RustVec::from_vec_string(__foo())"));
     }
 
     /// This test verifies if `String` <=> `RustString` substitution happens for `Vec<String>`.
@@ -2139,7 +2111,7 @@ mod test {
             }
         })
         .unwrap();
-        assert!(rs.contains("v: &::cxx::private::RustVec<::cxx::private::RustString>"));
+        assert!(rs.contains("v: &::cxx::private::RustVec<::cxx::alloc::string::String>"));
         assert!(rs.contains("fn __foo(v: &::cxx::alloc::vec::Vec<::cxx::alloc::string::String>)"));
     }
 }
