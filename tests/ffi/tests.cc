@@ -790,6 +790,7 @@ extern "C" const char *cxx_run_test() noexcept {
   ASSERT(r_return_enum(0) == Enum::AVal);
   ASSERT(r_return_enum(1) == Enum::BVal);
   ASSERT(r_return_enum(2021) == Enum::CVal);
+  ASSERT(r_return_rust_vec_box()[0]->get() == 2020);
 
   r_take_primitive(2020);
   r_take_shared(Shared{2020});

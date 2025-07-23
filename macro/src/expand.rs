@@ -2108,4 +2108,30 @@ mod test {
         assert!(rs.contains("v: &::cxx::private::RustVec<::cxx::alloc::string::String>"));
         assert!(rs.contains("fn __foo(v: &::cxx::alloc::vec::Vec<::cxx::alloc::string::String>)"));
     }
+
+    /// This test covers implicit impl of `Vec<Box<T>>`.
+    #[test]
+    fn test_vec_of_box() {
+        let rs = bridge(quote! {
+            mod ffi {
+                extern "Rust" {
+                    type R;
+                    fn foo() -> Vec<Box<R>>;
+                }
+            }
+        })
+        .unwrap();
+        assert!(rs.contains("unsafe impl ::cxx::private::ImplBox for R {}"));
+        assert!(rs.contains("export_name = \"cxxbridge1$box$R$drop\""));
+
+        assert!(rs.contains(
+            "unsafe impl ::cxx::private::ImplVec for ::cxx::alloc::boxed::Box<R> {}"),
+        );
+        assert!(rs.contains("export_name = \"cxxbridge1$rust_vec$box$R$set_len\""));
+
+        // Covering these lines, because an early WIP incorrectly said`RustVec<*mut R>`
+        // instead of `RustVec<Box<R>>` in *some* of these lines.
+        assert!(rs.contains("__return: *mut ::cxx::private::RustVec<::cxx::alloc::boxed::Box<R>>"));
+        assert!(rs.contains("fn __foo() -> ::cxx::alloc::vec::Vec<::cxx::alloc::boxed::Box<R>>"));
+    }
 }

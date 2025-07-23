@@ -282,10 +282,10 @@ impl<'a> Types<'a> {
             Type::Ident(ident) => {
                 Atom::from(&ident.rust).is_none() && !self.aliases.contains_key(&ident.rust)
             }
-            Type::RustBox(_) => {
-                // TODO: We should treat Box<LocalType> as local to match
+            Type::RustBox(ty1) => {
+                // Treating Box<LocalType> as local to match
                 // https://doc.rust-lang.org/reference/items/implementations.html#r-items.impl.trait.fundamental
-                false
+                self.is_local(&ty1.inner)
             }
             Type::Array(_)
             | Type::CxxVector(_)
