@@ -37,6 +37,7 @@ serde_json = { version = "1.0.100", optional = true }
 
 [dev-dependencies]
 cxx = { version = "1.0", path = ".." }
+prettyplease = "0.2.35"
 
 [package.metadata.docs.rs]
 targets = ["x86_64-unknown-linux-gnu"]
