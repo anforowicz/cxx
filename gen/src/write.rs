@@ -738,7 +738,7 @@ fn begin_function_definition(out: &mut OutFile) {
 
 fn write_cxx_function_shim<'a>(out: &mut OutFile<'a>, efn: &'a ExternFn) {
     out.next_section();
-    out.set_namespace(&efn.name.namespace);
+    out.set_namespace(efn.resolve_namespace(out.types));
     out.begin_block(Block::ExternC);
     begin_function_definition(out);
     if efn.throws {
@@ -934,7 +934,7 @@ fn write_function_pointer_trampoline(out: &mut OutFile, efn: &ExternFn, var: &Pa
 }
 
 fn write_rust_function_decl<'a>(out: &mut OutFile<'a>, efn: &'a ExternFn) {
-    out.set_namespace(&efn.name.namespace);
+    out.set_namespace(efn.resolve_namespace(out.types));
     out.begin_block(Block::ExternC);
     let link_name = mangle::extern_fn(efn, out.types);
     let indirect_call = false;
@@ -1003,7 +1003,7 @@ fn write_rust_function_decl_impl(
 }
 
 fn write_rust_function_shim<'a>(out: &mut OutFile<'a>, efn: &'a ExternFn) {
-    out.set_namespace(&efn.name.namespace);
+    out.set_namespace(efn.resolve_namespace(out.types));
     let local_name = match &efn.receiver {
         None => efn.name.cxx.to_string(),
         Some(receiver) => format!(
@@ -2020,4 +2020,55 @@ fn write_cxx_vector(out: &mut OutFile, key: &NamedImplKey) {
 
     out.include.memory = true;
     write_unique_ptr_common(out, UniquePtr::CxxVector(element));
+}
+
+#[cfg(test)]
+mod test {
+    use crate::gen::Opt;
+    use crate::syntax::test_support::{collect_types, parse_apis};
+    use proc_macro2::TokenStream;
+    use quote::quote;
+
+    fn gen(bridge: TokenStream, header: bool) -> syn::Result<String> {
+        let apis = parse_apis(bridge)?;
+        let types = collect_types(&apis)?;
+        let opt = Opt {
+            ..Default::default()
+        };
+        let bytes = super::gen(&apis, &types, &opt, header);
+        Ok(String::from_utf8_lossy(&bytes).to_string())
+    }
+
+    fn gen_h(bridge: TokenStream) -> syn::Result<String> {
+        gen(bridge, true)
+    }
+
+    fn gen_cc(bridge: TokenStream) -> syn::Result<String> {
+        gen(bridge, false)
+    }
+
+    /// Regression test for <https://github.com/dtolnay/cxx/issues/460>
+    /// (`tests/ffi/...` provides an end-to-end test via `AShared::r_get_ref`).
+    #[test]
+    fn test_receiver_namespace() {
+        let bridge = quote! {
+            #[cxx::bridge(namespace = "top_level_namespace")]
+            mod ffi {
+                #[namespace = "shared"]
+                struct Color {
+                    r: u8,
+                    g: u8,
+                    b: u8,
+                }
+                #[namespace = "receiver_namespace_should_be_used_instead_of_this"]
+                extern "Rust" {
+                    fn is_white(self: &Color) -> bool;
+                }
+            }
+        };
+        let h = gen_h(bridge.clone()).unwrap();
+        let cc = gen_cc(bridge.clone()).unwrap();
+        assert!(!h.contains("receiver_namespace_should_be_used_instead_of_this"));
+        assert!(!cc.contains("receiver_namespace_should_be_used_instead_of_this"));
+    }
 }

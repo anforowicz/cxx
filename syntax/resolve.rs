@@ -1,5 +1,5 @@
 use crate::syntax::instantiate::NamedImplKey;
-use crate::syntax::{Lifetimes, NamedType, Pair, Types};
+use crate::syntax::{ExternFn, Lifetimes, NamedType, Namespace, Pair, Types};
 use proc_macro2::Ident;
 
 #[derive(Copy, Clone)]
@@ -42,5 +42,16 @@ impl UnresolvedName for NamedType {
 impl<'a> UnresolvedName for NamedImplKey<'a> {
     fn ident(&self) -> &Ident {
         self.rust
+    }
+}
+
+impl ExternFn {
+    pub(crate) fn resolve_namespace<'a>(&'a self, types: &'a Types) -> &'a Namespace {
+        self.sig
+            .receiver
+            .as_ref()
+            .map_or(&self.name.namespace, |receiver| {
+                &types.resolve(&receiver.ty).name.namespace
+            })
     }
 }

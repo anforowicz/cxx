@@ -85,17 +85,13 @@ pub mod ffi3 {
         type CrossModuleRustType;
 
         #[allow(clippy::unnecessary_box_returns)]
-        fn r_boxed_cross_module_rust_type(
-            value: i32,
-        ) -> Box<CrossModuleRustType>;
+        fn r_boxed_cross_module_rust_type(value: i32) -> Box<CrossModuleRustType>;
     }
 }
 
 pub struct CrossModuleRustType(pub i32);
 
 #[allow(clippy::unnecessary_box_returns)]
-fn r_boxed_cross_module_rust_type(
-    value: i32,
-) -> Box<CrossModuleRustType> {
+fn r_boxed_cross_module_rust_type(value: i32) -> Box<CrossModuleRustType> {
     Box::new(CrossModuleRustType(value))
 }

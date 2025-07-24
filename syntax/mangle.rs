@@ -85,17 +85,13 @@ macro_rules! join {
 }
 
 pub(crate) fn extern_fn(efn: &ExternFn, types: &Types) -> Symbol {
+    let namespace = efn.resolve_namespace(types);
     match &efn.receiver {
         Some(receiver) => {
             let receiver_ident = types.resolve(&receiver.ty);
-            join!(
-                efn.name.namespace,
-                CXXBRIDGE,
-                receiver_ident.name.cxx,
-                efn.name.rust,
-            )
+            join!(namespace, CXXBRIDGE, receiver_ident.name.cxx, efn.name.rust)
         }
-        None => join!(efn.name.namespace, CXXBRIDGE, efn.name.rust),
+        None => join!(namespace, CXXBRIDGE, efn.name.rust),
     }
 }
 

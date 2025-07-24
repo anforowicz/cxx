@@ -983,6 +983,12 @@ extern "C" const char *cxx_run_test() noexcept {
   ASSERT(123 == r_get_value_from_cross_module_rust_type(
       *r_boxed_cross_module_rust_type(123)));
 
+  {
+    ::A::AShared a;
+    a.type = 123;
+    ASSERT(a.r_get_ref() == 123);
+  }
+
   cxx_test_suite_set_correct();
   return nullptr;
 }

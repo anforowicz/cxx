@@ -319,6 +319,11 @@ pub mod ffi {
         fn r_aliased_function(x: i32) -> String;
     }
 
+    #[namespace = "blah"] // <= should be ignored / we should use receiver's namespace
+    extern "Rust" {
+        fn r_get_ref(self: &AShared) -> &usize;
+    }
+
     struct Dag0 {
         i: i32,
     }
@@ -345,9 +350,7 @@ pub mod ffi {
 
     extern "Rust" {
         type CrossModuleRustType = crate::module::CrossModuleRustType;
-        fn r_get_value_from_cross_module_rust_type(
-            value: &CrossModuleRustType,
-        ) -> i32;
+        fn r_get_value_from_cross_module_rust_type(value: &CrossModuleRustType) -> i32;
     }
 }
 
@@ -422,6 +425,12 @@ pub struct Reference<'a>(pub &'a String);
 impl ffi::Shared {
     fn r_method_on_shared(&self) -> String {
         "2020".to_owned()
+    }
+}
+
+impl ffi::AShared {
+    fn r_get_ref(&self) -> &usize {
+        &self.z
     }
 }
 
@@ -667,8 +676,6 @@ fn r_aliased_function(x: i32) -> String {
     x.to_string()
 }
 
-fn r_get_value_from_cross_module_rust_type(
-    value: &crate::module::CrossModuleRustType,
-) -> i32 {
+fn r_get_value_from_cross_module_rust_type(value: &crate::module::CrossModuleRustType) -> i32 {
     value.0
 }
