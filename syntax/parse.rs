@@ -520,25 +520,6 @@ fn parse_extern_fn(
     namespace: &Namespace,
     attrs: &OtherAttrs,
 ) -> Result<Api> {
-    let mut cfg = extern_block_cfg.clone();
-    let mut doc = Doc::new();
-    let mut namespace = namespace.clone();
-    let mut cxx_name = None;
-    let mut rust_name = None;
-    let mut attrs = attrs.clone();
-    attrs.extend(attrs::parse(
-        cx,
-        mem::take(&mut foreign_fn.attrs),
-        attrs::Parser {
-            cfg: Some(&mut cfg),
-            doc: Some(&mut doc),
-            namespace: Some(&mut namespace),
-            cxx_name: Some(&mut cxx_name),
-            rust_name: Some(&mut rust_name),
-            ..Default::default()
-        },
-    ));
-
     let generics = &foreign_fn.sig.generics;
     if generics.where_clause.is_some()
         || generics.params.iter().any(|param| match param {
@@ -656,6 +637,38 @@ fn parse_extern_fn(
             }
         }
     }
+
+    if receiver.is_some() {
+        let namespace_attr = foreign_fn
+            .attrs
+            .iter()
+            .find(|attr| attr.path().is_ident(crate::syntax::attrs::NAMESPACE));
+        if let Some(namespace_attr) = namespace_attr {
+            return Err(Error::new_spanned(
+                namespace_attr,
+                "Ignored `namespace` attribute - will use receiver's namespace instead",
+            ));
+        }
+    }
+
+    let mut cfg = extern_block_cfg.clone();
+    let mut doc = Doc::new();
+    let mut namespace = namespace.clone();
+    let mut cxx_name = None;
+    let mut rust_name = None;
+    let mut attrs = attrs.clone();
+    attrs.extend(attrs::parse(
+        cx,
+        mem::take(&mut foreign_fn.attrs),
+        attrs::Parser {
+            cfg: Some(&mut cfg),
+            doc: Some(&mut doc),
+            namespace: Some(&mut namespace),
+            cxx_name: Some(&mut cxx_name),
+            rust_name: Some(&mut rust_name),
+            ..Default::default()
+        },
+    ));
 
     let mut throws_tokens = None;
     let ret = parse_return_type(&foreign_fn.sig.output, &mut throws_tokens)?;

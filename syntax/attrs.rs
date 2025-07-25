@@ -44,6 +44,8 @@ pub(crate) struct Parser<'a> {
     pub(crate) _more: (),
 }
 
+pub(crate) static NAMESPACE: &str = "namespace";
+
 pub(crate) fn parse(cx: &mut Errors, attrs: Vec<Attribute>, mut parser: Parser) -> OtherAttrs {
     let mut passthrough_attrs = Vec::new();
     for attr in attrs {
@@ -90,7 +92,7 @@ pub(crate) fn parse(cx: &mut Errors, attrs: Vec<Attribute>, mut parser: Parser) 
                     break;
                 }
             }
-        } else if attr_path.is_ident("namespace") {
+        } else if attr_path.is_ident(NAMESPACE) {
             match Namespace::parse_meta(&attr.meta) {
                 Ok(attr) => {
                     if let Some(namespace) = &mut parser.namespace {

@@ -1,0 +1,5 @@
+error: Ignored `namespace` attribute - will use receiver's namespace instead
+ --> tests/ui/method_namespace_ignored.rs:6:9
+  |
+6 |         #[namespace = "this_will_be_ignored_and_therefore_should_be_an_error"]
+  |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
