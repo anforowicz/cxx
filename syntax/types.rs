@@ -7,8 +7,7 @@ use crate::syntax::set::{OrderedSet, UnorderedSet};
 use crate::syntax::trivial::{self, TrivialReason};
 use crate::syntax::visit::{self, Visit};
 use crate::syntax::{
-    toposort, Api, Atom, Enum, EnumRepr, ExternType, Impl, Lang, Lifetimes, Pair, Struct, Type,
-    TypeAlias,
+    toposort, Api, Atom, Enum, EnumRepr, ExternType, Impl, Lifetimes, Pair, Struct, Type, TypeAlias,
 };
 use proc_macro2::Ident;
 use quote::ToTokens;
@@ -157,21 +156,22 @@ impl<'a> Types<'a> {
                         visit(&mut all, ret);
                     }
                 }
-                Api::TypeAlias(alias) => {
+                Api::CxxTypeAlias(alias) => {
                     let ident = &alias.name.rust;
                     if !type_names.insert(ident) {
                         duplicate_name(cx, alias, ident);
                     }
-                    match alias.lang {
-                        Lang::Cxx | Lang::CxxUnwind => {
-                            cxx.insert(ident);
-                            cxx_aliases.insert(ident, alias);
-                        }
-                        Lang::Rust => {
-                            rust.insert(ident);
-                            rust_aliases.insert(ident, alias);
-                        }
+                    cxx.insert(ident);
+                    cxx_aliases.insert(ident, alias);
+                    add_resolution(&alias.name, &alias.generics);
+                }
+                Api::RustTypeAlias(alias) => {
+                    let ident = &alias.name.rust;
+                    if !type_names.insert(ident) {
+                        duplicate_name(cx, alias, ident);
                     }
+                    rust.insert(ident);
+                    rust_aliases.insert(ident, alias);
                     add_resolution(&alias.name, &alias.generics);
                 }
                 Api::Impl(imp) => {

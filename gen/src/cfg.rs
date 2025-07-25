@@ -116,7 +116,7 @@ impl Api {
             Api::Enum(enm) => &enm.cfg,
             Api::CxxType(ety) | Api::RustType(ety) => &ety.cfg,
             Api::CxxFunction(efn) | Api::RustFunction(efn) => &efn.cfg,
-            Api::TypeAlias(alias) => &alias.cfg,
+            Api::CxxTypeAlias(alias) | Api::RustTypeAlias(alias) => &alias.cfg,
             Api::Impl(imp) => &imp.cfg,
         }
     }

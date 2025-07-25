@@ -415,7 +415,7 @@ fn parse_foreign_mod(
 
     let mut types = items.iter().filter_map(|item| match item {
         Api::CxxType(ety) | Api::RustType(ety) => Some(&ety.name),
-        Api::TypeAlias(alias) => Some(&alias.name),
+        Api::CxxTypeAlias(alias) | Api::RustTypeAlias(alias) => Some(&alias.name),
         _ => None,
     });
     if let (Some(single_type), None) = (types.next(), types.next()) {
@@ -873,9 +873,8 @@ fn parse_type_alias(
     let visibility = visibility_pub(&visibility, type_token.span);
     let name = pair(namespace, &ident, cxx_name, rust_name);
 
-    Ok(Api::TypeAlias(TypeAlias {
+    let type_alias = TypeAlias {
         cfg,
-        lang,
         doc,
         derives,
         attrs,
@@ -886,7 +885,11 @@ fn parse_type_alias(
         eq_token,
         ty,
         semi_token,
-    }))
+    };
+    Ok(match lang {
+        Lang::Rust => Api::RustTypeAlias(type_alias),
+        Lang::Cxx | Lang::CxxUnwind => Api::CxxTypeAlias(type_alias),
+    })
 }
 
 fn parse_extern_type_bounded(

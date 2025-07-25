@@ -67,7 +67,7 @@ fn do_typecheck(cx: &mut Check) {
             Api::Enum(enm) => check_api_enum(cx, enm),
             Api::CxxType(ety) | Api::RustType(ety) => check_api_type(cx, ety),
             Api::CxxFunction(efn) | Api::RustFunction(efn) => check_api_fn(cx, efn),
-            Api::TypeAlias(alias) => check_api_type_alias(cx, alias),
+            Api::CxxTypeAlias(alias) | Api::RustTypeAlias(alias) => check_api_type_alias(cx, alias),
             Api::Impl(imp) => check_api_impl(cx, imp),
         }
     }

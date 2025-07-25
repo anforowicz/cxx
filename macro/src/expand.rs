@@ -81,9 +81,13 @@ fn expand(ffi: Module, doc: Doc, attrs: OtherAttrs, apis: &[Api], types: &Types)
                 hidden.extend(expand_rust_type_layout(ety, types));
             }
             Api::RustFunction(efn) => hidden.extend(expand_rust_function_shim(efn, types)),
-            Api::TypeAlias(alias) => {
+            Api::CxxTypeAlias(alias) => {
                 expanded.extend(expand_type_alias(alias));
-                hidden.extend(expand_type_alias_verify(alias, types));
+                hidden.extend(expand_cxx_type_alias_verify(alias, types));
+            }
+            Api::RustTypeAlias(alias) => {
+                expanded.extend(expand_type_alias(alias));
+                hidden.extend(expand_rust_type_alias_verify(alias));
             }
         }
     }
@@ -1267,39 +1271,40 @@ fn expand_type_alias(alias: &TypeAlias) -> TokenStream {
     }
 }
 
-fn expand_type_alias_verify(alias: &TypeAlias, types: &Types) -> TokenStream {
+fn expand_cxx_type_alias_verify(alias: &TypeAlias, types: &Types) -> TokenStream {
     let attrs = &alias.attrs;
     let ident = &alias.name.rust;
     let begin_span = alias.type_token.span;
     let end_span = alias.semi_token.span;
     let end = quote_spanned!(end_span=> >);
+    let type_id = type_id(&alias.name);
+    let begin = quote_spanned!(begin_span=> ::cxx::private::verify_extern_type::<);
+    let mut verify = quote! {
+        #attrs
+        const _: fn() = #begin #ident, #type_id #end;
+    };
 
-    match alias.lang {
-        Lang::Cxx | Lang::CxxUnwind => {
-            let type_id = type_id(&alias.name);
-            let begin = quote_spanned!(begin_span=> ::cxx::private::verify_extern_type::<);
-            let mut verify = quote! {
-                #attrs
-                const _: fn() = #begin #ident, #type_id #end;
-            };
+    if types.required_trivial.contains_key(&alias.name.rust) {
+        let begin = quote_spanned!(begin_span=> ::cxx::private::verify_extern_kind::<);
+        verify.extend(quote! {
+            #attrs
+            const _: fn() = #begin #ident, ::cxx::kind::Trivial #end;
+        });
+    }
 
-            if types.required_trivial.contains_key(&alias.name.rust) {
-                let begin = quote_spanned!(begin_span=> ::cxx::private::verify_extern_kind::<);
-                verify.extend(quote! {
-                    #attrs
-                    const _: fn() = #begin #ident, ::cxx::kind::Trivial #end;
-                });
-            }
+    verify
+}
 
-            verify
-        }
-        Lang::Rust => {
-            let begin = quote_spanned!(begin_span=> ::cxx::private::verify_rust_type::<);
-            quote! {
-                #attrs
-                const _: fn() = #begin #ident #end;
-            }
-        }
+fn expand_rust_type_alias_verify(alias: &TypeAlias) -> TokenStream {
+    let attrs = &alias.attrs;
+    let ident = &alias.name.rust;
+    let begin_span = alias.type_token.span;
+    let end_span = alias.semi_token.span;
+    let end = quote_spanned!(end_span=> >);
+    let begin = quote_spanned!(begin_span=> ::cxx::private::verify_rust_type::<);
+    quote! {
+        #attrs
+        const _: fn() = #begin #ident #end;
     }
 }
 

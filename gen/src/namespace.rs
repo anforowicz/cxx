@@ -8,7 +8,9 @@ impl Api {
             Api::CxxType(ety) | Api::RustType(ety) => &ety.name.namespace,
             Api::Enum(enm) => &enm.name.namespace,
             Api::Struct(strct) => &strct.name.namespace,
-            Api::Impl(_) | Api::Include(_) | Api::TypeAlias(_) => Default::default(),
+            Api::Impl(_) | Api::Include(_) | Api::CxxTypeAlias(_) | Api::RustTypeAlias(_) => {
+                Default::default()
+            }
         }
     }
 }

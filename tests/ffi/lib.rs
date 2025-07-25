@@ -345,9 +345,7 @@ pub mod ffi {
 
     extern "Rust" {
         type CrossModuleRustType = crate::module::CrossModuleRustType;
-        fn r_get_value_from_cross_module_rust_type(
-            value: &CrossModuleRustType,
-        ) -> i32;
+        fn r_get_value_from_cross_module_rust_type(value: &CrossModuleRustType) -> i32;
     }
 }
 
@@ -667,8 +665,6 @@ fn r_aliased_function(x: i32) -> String {
     x.to_string()
 }
 
-fn r_get_value_from_cross_module_rust_type(
-    value: &crate::module::CrossModuleRustType,
-) -> i32 {
+fn r_get_value_from_cross_module_rust_type(value: &crate::module::CrossModuleRustType) -> i32 {
     value.0
 }

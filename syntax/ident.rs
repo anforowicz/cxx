@@ -49,7 +49,7 @@ pub(crate) fn check_all(cx: &mut Check, apis: &[Api]) {
                     check(cx, &arg.name);
                 }
             }
-            Api::TypeAlias(alias) => {
+            Api::CxxTypeAlias(alias) | Api::RustTypeAlias(alias) => {
                 check(cx, &alias.name);
             }
         }
