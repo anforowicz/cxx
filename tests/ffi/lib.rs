@@ -373,7 +373,14 @@ pub mod ffi {
     extern "Rust" {
         type CrossModuleRustType = crate::module::CrossModuleRustType;
         fn r_get_value_from_cross_module_rust_type(value: &CrossModuleRustType) -> i32;
+
+        type Any = crate::module::CrossModuleRustType;
+        fn repro(bad: &mut CrossModuleRustType) -> &mut Any;
     }
+}
+
+fn repro(bad: &mut ffi::CrossModuleRustType) -> &mut ffi::Any {
+    bad
 }
 
 mod other {

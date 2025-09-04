@@ -994,6 +994,7 @@ extern "C" const char *cxx_run_test() noexcept {
 
   ASSERT(123 == r_get_value_from_cross_module_rust_type(
       *r_boxed_cross_module_rust_type(123)));
+  repro(*r_boxed_cross_module_rust_type(123)).fill('?');
 
   cxx_test_suite_set_correct();
   return nullptr;

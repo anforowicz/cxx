@@ -249,3 +249,7 @@ public:
 
 std::unique_ptr<I> ns_c_return_unique_ptr_ns();
 } // namespace I
+
+namespace tests {
+using Any = std::array<char, 1000>;
+}
