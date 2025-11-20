@@ -95,7 +95,6 @@ jobs:
               -Wno-missing-prototypes
               -Wno-padded
               -Wno-sign-conversion
-              -Wno-undefined-func-template
               -Wno-unsafe-buffer-usage
               -Wno-unused-macros
     env:

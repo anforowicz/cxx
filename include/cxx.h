@@ -525,6 +525,8 @@ using is_relocatable = IsRelocatable<T>;
 #define CXXBRIDGE1_PANIC
 template <typename Exception>
 void panic [[noreturn]] (const char *msg);
+
+extern template void panic<std::out_of_range> [[noreturn]] (const char *msg);
 #endif // CXXBRIDGE1_PANIC
 
 #ifndef CXXBRIDGE1_RUST_FN
@@ -1144,6 +1146,63 @@ struct IsRelocatable
               bool, std::is_trivially_move_constructible<T>::value &&
                         std::is_trivially_destructible<T>::value>>::type {};
 #endif // CXXBRIDGE1_RELOCATABLE
+
+namespace detail {
+// On some platforms size_t is the same C++ type as one of the sized integer
+// types; on others it is a distinct type. Only in the latter case do we need to
+// define a specialized impl of rust::Vec<size_t>, because in the former case it
+// would collide with one of the other specializations.
+using usize_if_unique =
+    typename std::conditional<std::is_same<size_t, uint64_t>::value ||
+                                  std::is_same<size_t, uint32_t>::value,
+                              struct usize_ignore, size_t>::type;
+using isize_if_unique =
+    typename std::conditional<std::is_same<rust::isize, int64_t>::value ||
+                                  std::is_same<rust::isize, int32_t>::value,
+                              struct isize_ignore, rust::isize>::type;
+// Similarly, on some platforms char may just be an alias for [u]int8_t.
+using char_if_unique =
+    typename std::conditional<std::is_same<char, uint8_t>::value ||
+                                  std::is_same<char, int8_t>::value,
+                              struct char_ignore, char>::type;
+} // namespace detail
+
+// Usize and isize are the same type as one of the below.
+#define CXXBRIDGE1_FOR_EACH_NUMERIC(MACRO)                                     \
+  MACRO(u8, std::uint8_t)                                                      \
+  MACRO(u16, std::uint16_t)                                                    \
+  MACRO(u32, std::uint32_t)                                                    \
+  MACRO(u64, std::uint64_t)                                                    \
+  MACRO(i8, std::int8_t)                                                       \
+  MACRO(i16, std::int16_t)                                                     \
+  MACRO(i32, std::int32_t)                                                     \
+  MACRO(i64, std::int64_t)                                                     \
+  MACRO(f32, float)                                                            \
+  MACRO(f64, double)
+
+#define CXXBRIDGE1_FOR_EACH_RUST_VEC(MACRO)                                    \
+  CXXBRIDGE1_FOR_EACH_NUMERIC(MACRO)                                           \
+  MACRO(bool, bool)                                                            \
+  MACRO(char, rust::detail::char_if_unique)                                    \
+  MACRO(usize, rust::detail::usize_if_unique)                                  \
+  MACRO(isize, rust::detail::isize_if_unique)                                  \
+  MACRO(string, rust::String)                                                  \
+  MACRO(str, rust::Str)
+
+#define CXXBRIDGE1_RUST_VEC_DECLS(CXX_TYPE)                                    \
+  template<> Vec<CXX_TYPE>::Vec() noexcept;                                    \
+  template<> std::size_t Vec<CXX_TYPE>::size() const noexcept;                 \
+  template<> std::size_t Vec<CXX_TYPE>::capacity() const noexcept;             \
+  template<> const CXX_TYPE* Vec<CXX_TYPE>::data() const noexcept;             \
+  template<> void Vec<CXX_TYPE>::truncate(std::size_t len);                    \
+  template<> void Vec<CXX_TYPE>::reserve_total(std::size_t new_cap) noexcept;  \
+  template<> void Vec<CXX_TYPE>::set_len(std::size_t len) noexcept;            \
+  template<> void Vec<CXX_TYPE>::drop() noexcept;
+
+#define CXXBRIDGE1_RUST_VEC_DECLS2(IGNORED_RUST_TYPE, CXX_TYPE)                \
+    CXXBRIDGE1_RUST_VEC_DECLS(CXX_TYPE)
+
+CXXBRIDGE1_FOR_EACH_RUST_VEC(CXXBRIDGE1_RUST_VEC_DECLS2)
 
 } // namespace cxxbridge1
 } // namespace rust

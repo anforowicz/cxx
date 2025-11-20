@@ -1552,6 +1552,18 @@ fn write_space_after_type(out: &mut impl InfallibleWrite, ty: &Type) {
 
 fn write_generic_instantiations(out: &mut OutFile) {
     if out.header {
+        out.next_section();
+        out.set_namespace(Default::default());
+        for impl_key in out.types.impls.keys() {
+            match impl_key {
+                ImplKey::RustVec(ident) => write_rust_vec_header(out, ident),
+                ImplKey::RustBox(ident) => write_rust_box_header(out, ident),
+                ImplKey::UniquePtr(_)
+                | ImplKey::SharedPtr(_)
+                | ImplKey::WeakPtr(_)
+                | ImplKey::CxxVector(_) => (),
+            }
+        }
         return;
     }
 
@@ -1656,6 +1668,17 @@ fn write_rust_vec_extern(out: &mut OutFile, key: &NamedImplKey) {
     );
 }
 
+fn write_rust_box_header(out: &mut OutFile, key: &NamedImplKey) {
+    let inner = stringify_type(key.inner, out.types);
+    out.begin_block(Block::Namespace("rust"));
+    out.begin_block(Block::InlineNamespace("cxxbridge1"));
+    writeln!(out, "template <> {inner} *Box<{inner}>::allocation::alloc() noexcept;");
+    writeln!(out, "template <> void Box<{inner}>::allocation::dealloc({inner} *ptr) noexcept;");
+    writeln!(out, "template <> void Box<{inner}>::drop() noexcept;");
+    out.end_block(Block::InlineNamespace("cxxbridge1"));
+    out.end_block(Block::Namespace("rust"));
+}
+
 fn write_rust_box_impl(out: &mut OutFile, key: &NamedImplKey) {
     let inner = stringify_type(key.inner, out.types);
     let instance = &key.symbol;
@@ -1687,6 +1710,15 @@ fn write_rust_box_impl(out: &mut OutFile, key: &NamedImplKey) {
     writeln!(out, "void Box<{}>::drop() noexcept {{", inner);
     writeln!(out, "  cxxbridge1$box${}$drop(this);", instance);
     writeln!(out, "}}");
+}
+
+fn write_rust_vec_header(out: &mut OutFile, key: &NamedImplKey) {
+    let inner = stringify_type(key.inner, out.types);
+    out.begin_block(Block::Namespace("rust"));
+    out.begin_block(Block::InlineNamespace("cxxbridge1"));
+    writeln!(out, "CXXBRIDGE1_RUST_VEC_DECLS({inner})");
+    out.end_block(Block::InlineNamespace("cxxbridge1"));
+    out.end_block(Block::Namespace("rust"));
 }
 
 fn write_rust_vec_impl(out: &mut OutFile, key: &NamedImplKey) {

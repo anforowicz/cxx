@@ -574,24 +574,6 @@ repr::PtrLen cxxbridge1$exception(const char *, std::size_t len) noexcept;
 }
 
 namespace detail {
-// On some platforms size_t is the same C++ type as one of the sized integer
-// types; on others it is a distinct type. Only in the latter case do we need to
-// define a specialized impl of rust::Vec<size_t>, because in the former case it
-// would collide with one of the other specializations.
-using usize_if_unique =
-    typename std::conditional<std::is_same<size_t, uint64_t>::value ||
-                                  std::is_same<size_t, uint32_t>::value,
-                              struct usize_ignore, size_t>::type;
-using isize_if_unique =
-    typename std::conditional<std::is_same<rust::isize, int64_t>::value ||
-                                  std::is_same<rust::isize, int32_t>::value,
-                              struct isize_ignore, rust::isize>::type;
-// Similarly, on some platforms char may just be an alias for [u]int8_t.
-using char_if_unique =
-    typename std::conditional<std::is_same<char, uint8_t>::value ||
-                                  std::is_same<char, int8_t>::value,
-                              struct char_ignore, char>::type;
-
 class Fail final {
   repr::PtrLen &throw$;
 
@@ -816,21 +798,8 @@ static_assert(sizeof(std::string) <= kMaxExpectedWordsInString * sizeof(void *),
     self->~weak_ptr();                                                         \
   }
 
-// Usize and isize are the same type as one of the below.
-#define FOR_EACH_NUMERIC(MACRO)                                                \
-  MACRO(u8, std::uint8_t)                                                      \
-  MACRO(u16, std::uint16_t)                                                    \
-  MACRO(u32, std::uint32_t)                                                    \
-  MACRO(u64, std::uint64_t)                                                    \
-  MACRO(i8, std::int8_t)                                                       \
-  MACRO(i16, std::int16_t)                                                     \
-  MACRO(i32, std::int32_t)                                                     \
-  MACRO(i64, std::int64_t)                                                     \
-  MACRO(f32, float)                                                            \
-  MACRO(f64, double)
-
 #define FOR_EACH_TRIVIAL_STD_VECTOR(MACRO)                                     \
-  FOR_EACH_NUMERIC(MACRO)                                                      \
+  CXXBRIDGE1_FOR_EACH_NUMERIC(MACRO)                                           \
   MACRO(usize, std::size_t)                                                    \
   MACRO(isize, rust::isize)
 
@@ -838,17 +807,8 @@ static_assert(sizeof(std::string) <= kMaxExpectedWordsInString * sizeof(void *),
   FOR_EACH_TRIVIAL_STD_VECTOR(MACRO)                                           \
   MACRO(string, std::string)
 
-#define FOR_EACH_RUST_VEC(MACRO)                                               \
-  FOR_EACH_NUMERIC(MACRO)                                                      \
-  MACRO(bool, bool)                                                            \
-  MACRO(char, rust::detail::char_if_unique)                                    \
-  MACRO(usize, rust::detail::usize_if_unique)                                  \
-  MACRO(isize, rust::detail::isize_if_unique)                                  \
-  MACRO(string, rust::String)                                                  \
-  MACRO(str, rust::Str)
-
 #define FOR_EACH_SHARED_PTR(MACRO)                                             \
-  FOR_EACH_NUMERIC(MACRO)                                                      \
+  CXXBRIDGE1_FOR_EACH_NUMERIC(MACRO)                                           \
   MACRO(bool, bool)                                                            \
   MACRO(usize, std::size_t)                                                    \
   MACRO(isize, rust::isize)                                                    \
@@ -857,12 +817,12 @@ static_assert(sizeof(std::string) <= kMaxExpectedWordsInString * sizeof(void *),
 extern "C" {
 FOR_EACH_STD_VECTOR(STD_VECTOR_OPS)
 FOR_EACH_TRIVIAL_STD_VECTOR(STD_VECTOR_TRIVIAL_OPS)
-FOR_EACH_RUST_VEC(RUST_VEC_EXTERNS)
+CXXBRIDGE1_FOR_EACH_RUST_VEC(RUST_VEC_EXTERNS)
 FOR_EACH_SHARED_PTR(SHARED_PTR_OPS)
 } // extern "C"
 
 namespace rust {
 inline namespace cxxbridge1 {
-FOR_EACH_RUST_VEC(RUST_VEC_OPS)
+CXXBRIDGE1_FOR_EACH_RUST_VEC(RUST_VEC_OPS)
 } // namespace cxxbridge1
 } // namespace rust
